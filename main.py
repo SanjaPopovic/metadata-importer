@@ -2,17 +2,21 @@ from cottontaildb_client import CottontailDBClient, Type, Literal, column_def
 import pandas
 
 with CottontailDBClient('localhost', 1865) as client:
+    # Drop entity
+    client.drop_entity('cineast', 'cineast_distinctlocations')
+
     # Define entity columns
     columns = [
         column_def('semantic_name', Type.STRING, primary=True, nullable=False),
         column_def('lat', Type.FLOAT, nullable=False),
-        column_def('lon', Type.FLOAT, nullable=False)
+        column_def('lon', Type.FLOAT, nullable=False),
+        column_def('freq', Type.INTEGER, nullable=False)
     ]
     # Create entity
     client.create_entity('cineast', 'cineast_distinctlocations', columns)
 
     df = pandas.read_csv('lsc2021-metadata.csv', index_col=False, sep=',', encoding='utf-8')
-    columns = ['semantic_name', 'lat', 'lon']
+    columns = ['semantic_name', 'lat', 'lon', 'freq']
 
     distinct_semantic_lat = {}
     distinct_semantic_lon = {}
@@ -34,9 +38,10 @@ with CottontailDBClient('localhost', 1865) as client:
     # here: two dictionaries with lists for each key (semanticname). Now I have to take the most frequent element from list and assign finally.
 
     for key in distinct_semantic_lat.keys():
+        freq = len(distinct_semantic_lat[key])
         distinct_semantic_lat[key] = max(set(distinct_semantic_lat[key]), key=distinct_semantic_lat[key].count)
         distinct_semantic_lon[key] = max(set(distinct_semantic_lon[key]), key=distinct_semantic_lon[key].count)
 
         values = [[Literal(stringData=key), Literal(floatData=distinct_semantic_lat[key]),
-                   Literal(floatData=distinct_semantic_lon[key])]]
+                   Literal(floatData=distinct_semantic_lon[key]), Literal(intData=freq)]]
         client.insert_batch('cineast', 'cineast_distinctlocations', columns, values)
